@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>借刀杀人：渔翁得利 - 三十六计第三计</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* 顶部信息栏 */
+        .top-bar {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border-bottom: 2px solid #8b4513;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: clamp(12px, 2vw, 16px);
+        }
+
+        .info-value {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        /* Canvas容器 */
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #0a0a0a;
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* 底部按钮栏 */
+        .bottom-bar {
+            display: flex;
+            justify-content: space-around;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.8);
+            border-top: 2px solid #8b4513;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 15px 20px;
+            font-size: clamp(14px, 3vw, 18px);
+            background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%);
+            color: #fff;
+            border: 2px solid #ffd700;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px #ffd700;
+        }
+
+        .action-btn:active {
+            transform: scale(0.95);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 弹窗样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #2c1810 0%, #3d2817 100%);
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #ffd700;
+            max-width: 90%;
+            max-height: 90%;
+            overflow-y: auto;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+
+        .modal-content h2 {
+            color: #ffd700;
+            margin-bottom: 20px;
+            font-size: clamp(20px, 4vw, 28px);
+        }
+
+        .modal-content p {
+            margin: 10px 0;
+            line-height: 1.6;
+            font-size: clamp(14px, 2.5vw, 18px);
+        }
+
+        .modal-btn {
+            margin-top: 20px;
+            padding: 12px 30px;
+            font-size: clamp(16px, 3vw, 20px);
+            background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%);
+            color: #fff;
+            border: 2px solid #ffd700;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* 事件提示 */
+        .event-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 40px;
+            background: rgba(255, 215, 0, 0.9);
+            color: #000;
+            border-radius: 10px;
+            font-size: clamp(18px, 4vw, 24px);
+            font-weight: bold;
+            z-index: 999;
+            display: none;
+            animation: popup 0.5s;
+        }
+
+        .event-popup.show {
+            display: block;
+        }
+
+        .event-popup.warning {
+            background: rgba(255, 165, 0, 0.9);
+        }
+
+        .event-popup.success {
+            background: rgba(0, 255, 0, 0.9);
+        }
+
+        @keyframes popup {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        /* 手机端优化 */
+        @media (max-width: 768px) {
+            .action-btn {
+                min-width: 100px;
+                padding: 12px 15px;
+            }
+            
+            .top-bar {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部信息栏 -->
+    <div class="top-bar">
+        <div class="info-item">
+            <span>💰情报:</span>
+            <span class="info-value" id="intelCount">10</span>
+        </div>
+        <div class="info-item">
+            <span>⏰时间:</span>
+            <span class="info-value" id="timeLeft">60</span>s
+        </div>
+        <div class="info-item">
+            <span>📊关卡:</span>
+            <span class="info-value" id="level">1</span>/5
+        </div>
+        <div class="info-item">
+            <span>🔥连胜:</span>
+            <span class="info-value" id="winStreak">0</span>
+        </div>
+        <div class="info-item">
+            <span>⚠️疑心:</span>
+            <span class="info-value" id="suspicion">0</span>
+        </div>
+    </div>
+
+    <!-- Canvas游戏区域 -->
+    <div class="canvas-container">
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <!-- 底部操作按钮 -->
+    <div class="bottom-bar">
+        <button class="action-btn" id="btnIntel">送情报给曹操<br>(+恨20 -2情报)</button>
+        <button class="action-btn" id="btnRumor">散布吕布谣言<br>(-吕布15 -1情报)</button>
+        <button class="action-btn" id="btnTrain">暗练兵<br>(+玩家10 -风险)</button>
+    </div>
+
+    <!-- 教程弹窗 -->
+    <div class="modal" id="tutorialModal">
+        <div class="modal-content">
+            <h2>🎮 借刀杀人：渔翁得利</h2>
+            <p><strong>三十六计第三计</strong></p>
+            <p>🎯 <strong>目标：</strong>让曹操恨吕布，借曹操之手灭吕布！</p>
+            <p>📋 <strong>操作：</strong></p>
+            <p>1️⃣ 送情报给曹操 → 增加曹操对吕布的恨意</p>
+            <p>2️⃣ 散布吕布谣言 → 削弱吕布实力</p>
+            <p>3️⃣ 暗练兵 → 增强自己实力（但要小心疑心）</p>
+            <p>⚠️ <strong>注意：</strong>疑心过高会失败！闲置会降低恨意！</p>
+            <button class="modal-btn" id="startBtn">开始游戏</button>
+        </div>
+    </div>
+
+    <!-- 关卡教程弹窗 -->
+    <div class="modal" id="levelTutorialModal">
+        <div class="modal-content">
+            <h2 id="levelTutorialTitle">第1关</h2>
+            <div id="levelTutorialContent"></div>
+            <button class="modal-btn" id="levelStartBtn">开始本关</button>
+        </div>
+    </div>
+
+    <!-- 结束弹窗 -->
+    <div class="modal" id="endModal">
+        <div class="modal-content">
+            <h2 id="endTitle">游戏结束</h2>
+            <p id="endMessage"></p>
+            <p id="endScore"></p>
+            <button class="modal-btn" id="restartBtn">再来一局</button>
+        </div>
+    </div>
+
+    <!-- 事件提示 -->
+    <div class="event-popup" id="eventPopup"></div>
+
+    <script>
+        // ==================== 游戏状态 ====================
+        const gameState = {
+            // 关卡配置
+            level: 1,
+            maxLevel: 5,
+            levelConfig: [
+                { threshold: 60, intel: 10, risk: 0 },      // 关1
+                { threshold: 70, intel: 10, risk: 10 },     // 关2
+                { threshold: 75, intel: 9, risk: 10 },      // 关3
+                { threshold: 80, intel: 8, risk: 20 },     // 关4
+                { threshold: 90, intel: 8, risk: 20 }      // 关5
+            ],
+            
+            // 势力值
+            lvbu: 100,          // 吕布实力
+            caocaoHate: 0,      // 曹操恨意
+            playerPower: 50,    // 玩家实力
+            
+            // 资源
+            intel: 10,          // 情报数
+            time: 60,           // 剩余时间（秒）
+            suspicion: 0,       // 疑心值（0-100）
+            
+            // 游戏状态
+            isPlaying: false,
+            isPaused: false,
+            winStreak: 0,       // 连胜数
+            totalScore: 0,      // 总得分
+            decayCooldown: false, // 恨意衰减冷却
+            
+            // 动画
+            lastActionTime: Date.now(),
+            particles: [],      // 粒子效果
+            animations: []      // 动画队列
+        };
+
+        // ==================== Canvas初始化 ====================
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            draw();
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // ==================== 绘制函数 ====================
+        function draw() {
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制背景（古风地图）
+            drawBackground();
+            
+            // 绘制城池和势力
+            drawCities();
+            
+            // 绘制势力条
+            drawPowerBars();
+            
+            // 绘制粒子效果
+            drawParticles();
+            
+            // 绘制动画效果
+            drawAnimations();
+        }
+
+        function drawBackground() {
+            // 渐变背景（山河）
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#1a3a2a');
+            gradient.addColorStop(0.5, '#2d5a3d');
+            gradient.addColorStop(1, '#1a2a1a');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制山脉轮廓
+            ctx.fillStyle = '#3d5a4d';
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height * 0.3);
+            ctx.quadraticCurveTo(canvas.width * 0.2, canvas.height * 0.2, canvas.width * 0.4, canvas.height * 0.3);
+            ctx.quadraticCurveTo(canvas.width * 0.6, canvas.height * 0.25, canvas.width * 0.8, canvas.height * 0.3);
+            ctx.lineTo(canvas.width, canvas.height * 0.3);
+            ctx.lineTo(canvas.width, canvas.height);
+            ctx.lineTo(0, canvas.height);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawCities() {
+            const citySize = Math.min(canvas.width, canvas.height) * 0.08;
+            const fontSize = citySize * 0.6;
+            
+            // 左：刘备徐州
+            const leftX = canvas.width * 0.15;
+            const leftY = canvas.height * 0.5;
+            drawCity(leftX, leftY, citySize, '🏯', '刘备徐州', '#00ff00', fontSize);
+            
+            // 中：吕布下邳
+            const midX = canvas.width * 0.5;
+            const midY = canvas.height * 0.5;
+            drawCity(midX, midY, citySize, '🏯', '吕布下邳', '#ff0000', fontSize);
+            
+            // 右：曹操许昌
+            const rightX = canvas.width * 0.85;
+            const rightY = canvas.height * 0.5;
+            drawCity(rightX, rightY, citySize, '🏯', '曹操许昌', '#0000ff', fontSize);
+        }
+
+        function drawCity(x, y, size, emoji, name, color, fontSize) {
+            // 绘制城池底座
+            ctx.fillStyle = color;
+            ctx.globalAlpha = 0.3;
+            ctx.fillRect(x - size * 0.6, y - size * 0.3, size * 1.2, size * 0.6);
+            ctx.globalAlpha = 1;
+            
+            // 绘制旗帜
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(x, y - size * 0.5);
+            ctx.lineTo(x - size * 0.2, y - size * 0.3);
+            ctx.lineTo(x + size * 0.2, y - size * 0.3);
+            ctx.closePath();
+            ctx.fill();
+            
+            // 绘制emoji
+            ctx.font = `${size}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(emoji, x, y);
+            
+            // 绘制名称
+            ctx.font = `bold ${fontSize}px Arial`;
+            ctx.fillStyle = '#fff';
+            ctx.fillText(name, x, y + size * 0.6);
+        }
+
+        function drawPowerBars() {
+            const barWidth = canvas.width * 0.25;
+            const barHeight = 30;
+            const barY = canvas.height * 0.15;
+            const spacing = canvas.width * 0.1;
+            
+            // 左：玩家实力（绿）
+            const leftX = canvas.width * 0.15 - barWidth / 2;
+            drawPowerBar(leftX, barY, barWidth, barHeight, gameState.playerPower, 100, '#00ff00', '⚔️玩家');
+            
+            // 中：吕布实力（红）
+            const midX = canvas.width * 0.5 - barWidth / 2;
+            drawPowerBar(midX, barY, barWidth, barHeight, gameState.lvbu, 100, '#ff0000', '🔴吕布');
+            
+            // 右：曹操恨意（蓝）
+            const rightX = canvas.width * 0.85 - barWidth / 2;
+            const threshold = gameState.levelConfig[gameState.level - 1].threshold;
+            drawPowerBar(rightX, barY, barWidth, barHeight, gameState.caocaoHate, threshold, '#0000ff', '👑曹操');
+            
+            // 绘制emoji表情
+            drawEmoji();
+        }
+
+        function drawPowerBar(x, y, width, height, value, max, color, label) {
+            // 背景
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(x, y, width, height);
+            
+            // 填充条（动画效果）
+            const fillWidth = (value / max) * width;
+            const gradient = ctx.createLinearGradient(x, y, x + fillWidth, y);
+            gradient.addColorStop(0, color);
+            gradient.addColorStop(1, color + '80');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x, y, fillWidth, height);
+            
+            // 边框
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, width, height);
+            
+            // 文字
+            ctx.font = 'bold 14px Arial';
+            ctx.fillStyle = '#fff';
+            ctx.textAlign = 'left';
+            ctx.fillText(`${label}: ${Math.round(value)}/${max}`, x, y - 5);
+        }
+
+        function drawEmoji() {
+            const emojiSize = 40;
+            const emojiY = canvas.height * 0.25;
+            
+            // 曹操表情（根据恨意）
+            const caocaoX = canvas.width * 0.85;
+            let caocaoEmoji = '😐';
+            if (gameState.caocaoHate >= gameState.levelConfig[gameState.level - 1].threshold) {
+                caocaoEmoji = '😆';
+            } else if (gameState.caocaoHate > 50) {
+                caocaoEmoji = '😡';
+            }
+            ctx.font = `${emojiSize}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillText(caocaoEmoji, caocaoX, emojiY);
+            
+            // 吕布表情（根据实力）
+            const lvbuX = canvas.width * 0.5;
+            let lvbuEmoji = '😎';
+            if (gameState.lvbu < 30) {
+                lvbuEmoji = '😱';
+            } else if (gameState.lvbu < 60) {
+                lvbuEmoji = '😰';
+            }
+            ctx.fillText(lvbuEmoji, lvbuX, emojiY);
+        }
+
+        function drawParticles() {
+            gameState.particles.forEach((particle, index) => {
+                ctx.save();
+                ctx.globalAlpha = particle.alpha;
+                ctx.fillStyle = particle.color;
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+                
+                // 更新粒子
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+                particle.alpha -= 0.02;
+                particle.size *= 0.98;
+                
+                // 移除消失的粒子
+                if (particle.alpha <= 0 || particle.size <= 0) {
+                    gameState.particles.splice(index, 1);
+                }
+            });
+        }
+
+        function drawAnimations() {
+            // 绘制动画效果（如箭头、爆炸等）
+            gameState.animations.forEach((anim, index) => {
+                if (anim.type === 'arrow') {
+                    ctx.strokeStyle = '#ff0000';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(anim.x, anim.y);
+                    ctx.lineTo(anim.x + anim.length * Math.cos(anim.angle), 
+                               anim.y + anim.length * Math.sin(anim.angle));
+                    ctx.stroke();
+                    
+                    // 箭头头部
+                    ctx.fillStyle = '#ff0000';
+                    ctx.beginPath();
+                    ctx.arc(anim.x + anim.length * Math.cos(anim.angle),
+                           anim.y + anim.length * Math.sin(anim.angle), 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    anim.x += anim.speed * Math.cos(anim.angle);
+                    anim.y += anim.speed * Math.sin(anim.angle);
+                    anim.length += anim.speed;
+                    
+                    if (anim.length > 200) {
+                        gameState.animations.splice(index, 1);
+                    }
+                }
+            });
+        }
+
+        // ==================== 粒子效果 ====================
+        function createParticles(x, y, color, count = 20) {
+            for (let i = 0; i < count; i++) {
+                gameState.particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    size: Math.random() * 5 + 2,
+                    color: color,
+                    alpha: 1
+                });
+            }
+        }
+
+        // ==================== 音效（使用Web Audio API） ====================
+        function playSound(type) {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                switch(type) {
+                    case 'intel':
+                        oscillator.frequency.value = 800;
+                        oscillator.type = 'sine';
+                        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                        oscillator.start();
+                        oscillator.stop(audioContext.currentTime + 0.2);
+                        break;
+                    case 'rumor':
+                        oscillator.frequency.value = 400;
+                        oscillator.type = 'sawtooth';
+                        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                        oscillator.start();
+                        oscillator.stop(audioContext.currentTime + 0.3);
+                        break;
+                    case 'victory':
+                        // 胜利音效（多个音符）
+                        [523, 659, 784].forEach((freq, i) => {
+                            setTimeout(() => {
+                                const osc = audioContext.createOscillator();
+                                const gain = audioContext.createGain();
+                                osc.connect(gain);
+                                gain.connect(audioContext.destination);
+                                osc.frequency.value = freq;
+                                osc.type = 'sine';
+                                gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+                                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                                osc.start();
+                                osc.stop(audioContext.currentTime + 0.3);
+                            }, i * 100);
+                        });
+                        break;
+                    case 'fail':
+                        oscillator.frequency.value = 200;
+                        oscillator.type = 'sawtooth';
+                        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                        oscillator.start();
+                        oscillator.stop(audioContext.currentTime + 0.5);
+                        break;
+                }
+            } catch(e) {
+                // 静默失败（某些浏览器可能不支持）
+            }
+        }
+
+        // ==================== 事件提示 ====================
+        function showEvent(message, type = 'info') {
+            const popup = document.getElementById('eventPopup');
+            popup.textContent = message;
+            popup.className = `event-popup ${type} show`;
+            
+            setTimeout(() => {
+                popup.classList.remove('show');
+            }, 2000);
+        }
+
+        // ==================== 游戏逻辑 ====================
+        function sendIntel() {
+            if (gameState.intel < 2 || !gameState.isPlaying) return;
+            
+            gameState.intel -= 2;
+            let hateIncrease = 20;
+            
+            // 关卡5：连胜buff（每连胜+1，恨意增长+10%）
+            if (gameState.level === 5 && gameState.winStreak > 0) {
+                hateIncrease = Math.floor(hateIncrease * (1 + gameState.winStreak * 0.1));
+            }
+            
+            gameState.caocaoHate += hateIncrease;
+            gameState.lastActionTime = Date.now();
+            
+            // 10%概率曹操起疑
+            if (Math.random() < 0.1) {
+                gameState.caocaoHate -= 10;
+                gameState.suspicion += 5;
+                showEvent('⚠️ 曹操多疑！恨意-10', 'warning');
+            } else {
+                showEvent(`✅ 情报送达！恨意+${hateIncrease}`, 'success');
+            }
+            
+            // 随机惊喜：5%概率额外恨意
+            if (Math.random() < 0.05) {
+                gameState.caocaoHate += 5;
+                showEvent('🎁 惊喜！恨意额外+5', 'success');
+            }
+            
+            playSound('intel');
+            updateUI();
+            checkWin();
+        }
+
+        function spreadRumor() {
+            if (gameState.intel < 1 || !gameState.isPlaying) return;
+            
+            gameState.intel -= 1;
+            gameState.lvbu = Math.max(0, gameState.lvbu - 15);
+            gameState.lastActionTime = Date.now();
+            
+            // 10%概率吕布反扑
+            if (Math.random() < 0.1) {
+                gameState.playerPower = Math.max(0, gameState.playerPower - 10);
+                showEvent('⚠️ 吕布反扑！玩家-10', 'warning');
+            } else {
+                showEvent('✅ 谣言散布！吕布-15', 'success');
+            }
+            
+            // 关卡4：20%概率吕布求援（恨减半）
+            if (gameState.level === 4 && Math.random() < 0.2) {
+                gameState.caocaoHate = Math.floor(gameState.caocaoHate / 2);
+                showEvent('⚠️ 吕布求援！恨意减半', 'warning');
+            }
+            
+            // 随机惊喜：5%概率额外恨意
+            if (Math.random() < 0.05) {
+                gameState.caocaoHate += 5;
+                showEvent('🎁 惊喜！恨意额外+5', 'success');
+            }
+            
+            playSound('rumor');
+            updateUI();
+            checkWin();
+        }
+
+        function trainTroops() {
+            if (!gameState.isPlaying) return;
+            
+            const config = gameState.levelConfig[gameState.level - 1];
+            gameState.playerPower = Math.min(100, gameState.playerPower + 10);
+            gameState.lastActionTime = Date.now();
+            
+            // 根据风险等级增加疑心
+            if (Math.random() < config.risk / 100) {
+                gameState.suspicion += 5;
+                showEvent('⚠️ 练兵被发现！疑心+5', 'warning');
+            } else {
+                showEvent('✅ 暗练兵成功！玩家+10', 'success');
+            }
+            
+            // 累计疑心：每次练兵都增加2点（无论是否被发现）
+            gameState.suspicion += 2;
+            
+            // 随机惊喜：恢复1情报
+            if (Math.random() < 0.05) {
+                gameState.intel += 1;
+                showEvent('🎁 惊喜！情报+1', 'success');
+            }
+            
+            updateUI();
+            checkSuspicion();
+        }
+
+        // ==================== 游戏循环 ====================
+        function gameLoop() {
+            if (!gameState.isPlaying || gameState.isPaused) return;
+            
+            // 时间递减
+            gameState.time -= 1;
+            
+            // 闲置5秒，恨意-3（每5秒检查一次）
+            const now = Date.now();
+            if (now - gameState.lastActionTime > 5000) {
+                if (!gameState.decayCooldown) {
+                    gameState.caocaoHate = Math.max(0, gameState.caocaoHate - 3);
+                    gameState.decayCooldown = true;
+                    // 5秒后重置冷却，允许再次扣除
+                    setTimeout(() => {
+                        if (now - gameState.lastActionTime > 5000) {
+                            gameState.decayCooldown = false;
+                        }
+                    }, 5000);
+                }
+            } else {
+                // 有操作时重置冷却
+                gameState.decayCooldown = false;
+            }
+            
+            // 关卡3：资源事件（随机+1情报）
+            if (gameState.level === 3 && Math.random() < 0.1) {
+                gameState.intel += 1;
+                showEvent('🎁 资源事件！情报+1', 'success');
+            }
+            
+            // 关卡5：连胜buff（每连胜+1，恨意增长+10%）
+            if (gameState.level === 5 && gameState.winStreak > 0) {
+                // buff效果在操作时体现
+            }
+            
+            // 检查失败条件
+            if (gameState.intel <= 0) {
+                endGame(false, '情报用尽！');
+                return;
+            }
+            
+            if (gameState.time <= 0) {
+                endGame(false, '时间到了！');
+                return;
+            }
+            
+            checkSuspicion();
+            checkWin();
+            updateUI();
+            draw();
+        }
+
+        function checkWin() {
+            // 如果游戏已暂停（正在显示关卡教程），不检查胜利
+            if (gameState.isPaused) return;
+            
+            const threshold = gameState.levelConfig[gameState.level - 1].threshold;
+            if (gameState.caocaoHate >= threshold) {
+                // 暂停游戏，防止重复触发
+                gameState.isPaused = true;
+                gameState.isPlaying = false;
+                
+                // 胜利动画
+                createVictoryAnimation();
+                playSound('victory');
+                
+                setTimeout(() => {
+                    // 计算得分
+                    const score = gameState.intel * 5 + gameState.winStreak * 10;
+                    gameState.totalScore += score;
+                    gameState.winStreak += 1;
+                    
+                    // 进入下一关
+                    if (gameState.level < gameState.maxLevel) {
+                        nextLevel();
+                    } else {
+                        // 全部通关
+                        const finalMessage = `🎉 恭喜通关！\n借刀高手得分：${gameState.totalScore}分\n\n三十六计第三计：借刀杀人\n利用他人力量达成自己的目的，\n让曹操灭吕布，自己坐收渔翁之利！`;
+                        endGame(true, finalMessage);
+                    }
+                }, 2000);
+            }
+        }
+
+        function createVictoryAnimation() {
+            // 创建箭头动画（从曹操指向吕布）
+            const startX = canvas.width * 0.85;
+            const startY = canvas.height * 0.5;
+            const endX = canvas.width * 0.5;
+            const endY = canvas.height * 0.5;
+            const angle = Math.atan2(endY - startY, endX - startX);
+            
+            gameState.animations.push({
+                type: 'arrow',
+                x: startX,
+                y: startY,
+                angle: angle,
+                length: 0,
+                speed: 10
+            });
+            
+            // 创建爆炸粒子
+            setTimeout(() => {
+                createParticles(endX, endY, '#ff0000', 50);
+            }, 1000);
+        }
+
+        function checkSuspicion() {
+            if (gameState.suspicion >= 100) {
+                endGame(false, '疑心过高！计划败露！');
+                return;
+            }
+            
+            // 显示疑心值（可选：在UI上显示）
+            // 疑心值通过suspicion变量追踪，超过100即失败
+        }
+
+        function nextLevel() {
+            gameState.level += 1;
+            const config = gameState.levelConfig[gameState.level - 1];
+            
+            // 重置关卡数据
+            gameState.lvbu = 100;
+            gameState.caocaoHate = 0;
+            gameState.playerPower = 50;
+            gameState.intel = config.intel;
+            gameState.time = 60;
+            gameState.suspicion = 0;
+            gameState.decayCooldown = false;
+            gameState.lastActionTime = Date.now();
+            gameState.isPaused = true; // 暂停，等待玩家点击开始
+            gameState.isPlaying = false;
+            
+            // 显示关卡教程
+            showLevelTutorial();
+            updateUI();
+        }
+
+        function showLevelTutorial() {
+            const config = gameState.levelConfig[gameState.level - 1];
+            const modal = document.getElementById('levelTutorialModal');
+            const title = document.getElementById('levelTutorialTitle');
+            const content = document.getElementById('levelTutorialContent');
+            
+            title.textContent = `第${gameState.level}关`;
+            
+            // 根据关卡生成教程内容
+            let tutorialHTML = `<p><strong>🎯 通关条件：</strong></p>`;
+            tutorialHTML += `<p>让曹操恨意达到 <span style="color: #ffd700; font-size: 1.2em;">${config.threshold}</span> 点</p>`;
+            tutorialHTML += `<p><strong>📊 本关配置：</strong></p>`;
+            tutorialHTML += `<p>💰 起始情报：${config.intel}个</p>`;
+            tutorialHTML += `<p>⏰ 时间限制：60秒</p>`;
+            tutorialHTML += `<p>⚠️ 风险等级：${config.risk}%</p>`;
+            
+            // 关卡特殊说明
+            tutorialHTML += `<p><strong>💡 本关特色：</strong></p>`;
+            if (gameState.level === 1) {
+                tutorialHTML += `<p>新手关卡，无风险，熟悉操作</p>`;
+                tutorialHTML += `<p>建议：先送情报，再散布谣言</p>`;
+            } else if (gameState.level === 2) {
+                tutorialHTML += `<p>开始有风险，练兵需谨慎</p>`;
+                tutorialHTML += `<p>建议：合理分配情报资源</p>`;
+            } else if (gameState.level === 3) {
+                tutorialHTML += `<p>随机资源事件，可能获得额外情报</p>`;
+                tutorialHTML += `<p>建议：把握机会，灵活应对</p>`;
+            } else if (gameState.level === 4) {
+                tutorialHTML += `<p>吕布可能求援，恨意会减半</p>`;
+                tutorialHTML += `<p>建议：快速积累恨意，避免被削弱</p>`;
+            } else if (gameState.level === 5) {
+                tutorialHTML += `<p>最终关卡！连胜buff生效</p>`;
+                tutorialHTML += `<p>当前连胜：${gameState.winStreak}，恨意增长+${gameState.winStreak * 10}%</p>`;
+                tutorialHTML += `<p>建议：利用buff优势，一举通关！</p>`;
+            }
+            
+            tutorialHTML += `<p style="margin-top: 15px; color: #ffd700;"><strong>⚠️ 失败条件：</strong></p>`;
+            tutorialHTML += `<p>• 情报用尽</p>`;
+            tutorialHTML += `<p>• 时间归零</p>`;
+            tutorialHTML += `<p>• 疑心值达到100</p>`;
+            
+            content.innerHTML = tutorialHTML;
+            modal.classList.add('active');
+        }
+
+        function startLevel() {
+            gameState.isPaused = false;
+            gameState.isPlaying = true;
+            document.getElementById('levelTutorialModal').classList.remove('active');
+            gameState.lastActionTime = Date.now();
+        }
+
+        function endGame(won, message) {
+            gameState.isPlaying = false;
+            
+            const modal = document.getElementById('endModal');
+            const title = document.getElementById('endTitle');
+            const msg = document.getElementById('endMessage');
+            const score = document.getElementById('endScore');
+            
+            if (won) {
+                title.textContent = '🎉 胜利！';
+                playSound('victory');
+            } else {
+                title.textContent = '😢 失败';
+                playSound('fail');
+                // 失败动画
+                createParticles(canvas.width / 2, canvas.height / 2, '#ff0000', 30);
+            }
+            
+            msg.innerHTML = message.replace(/\n/g, '<br>');
+            score.textContent = `总得分：${gameState.totalScore} | 连胜：${gameState.winStreak}`;
+            
+            modal.classList.add('active');
+        }
+
+        // ==================== UI更新 ====================
+        function updateUI() {
+            document.getElementById('intelCount').textContent = gameState.intel;
+            document.getElementById('timeLeft').textContent = gameState.time;
+            document.getElementById('level').textContent = gameState.level;
+            document.getElementById('winStreak').textContent = gameState.winStreak;
+            document.getElementById('suspicion').textContent = gameState.suspicion;
+            
+            // 更新按钮状态
+            const btnIntel = document.getElementById('btnIntel');
+            const btnRumor = document.getElementById('btnRumor');
+            
+            btnIntel.disabled = gameState.intel < 2 || !gameState.isPlaying;
+            btnRumor.disabled = gameState.intel < 1 || !gameState.isPlaying;
+            
+            // 关卡5显示连胜buff提示
+            if (gameState.level === 5 && gameState.winStreak > 0) {
+                // buff效果已在sendIntel中实现
+            }
+        }
+
+        // ==================== 初始化 ====================
+        function initGame() {
+            const config = gameState.levelConfig[0];
+            gameState.level = 1;
+            gameState.lvbu = 100;
+            gameState.caocaoHate = 0;
+            gameState.playerPower = 50;
+            gameState.intel = config.intel;
+            gameState.time = 60;
+            gameState.suspicion = 0;
+            gameState.winStreak = 0;
+            gameState.totalScore = 0;
+            gameState.isPlaying = false;
+            gameState.isPaused = false;
+            gameState.decayCooldown = false;
+            gameState.lastActionTime = Date.now();
+            gameState.particles = [];
+            gameState.animations = [];
+            
+            updateUI();
+            draw();
+        }
+
+        // 游戏循环定时器
+        let gameLoopInterval = null;
+        let drawInterval = null;
+
+        function startGame() {
+            gameState.isPlaying = true;
+            gameState.isPaused = false;
+            document.getElementById('tutorialModal').classList.remove('active');
+            
+            // 显示第一关教程
+            showLevelTutorial();
+            
+            // 开始游戏循环（如果还没开始）
+            if (!gameLoopInterval) {
+                gameLoopInterval = setInterval(gameLoop, 1000);
+            }
+            if (!drawInterval) {
+                drawInterval = setInterval(draw, 1000 / 60); // 60fps动画
+            }
+            
+            updateUI();
+        }
+
+        // ==================== 事件监听 ====================
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('levelStartBtn').addEventListener('click', startLevel);
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            document.getElementById('endModal').classList.remove('active');
+            document.getElementById('levelTutorialModal').classList.remove('active');
+            initGame();
+            document.getElementById('tutorialModal').classList.add('active');
+        });
+        
+        document.getElementById('btnIntel').addEventListener('click', sendIntel);
+        document.getElementById('btnRumor').addEventListener('click', spreadRumor);
+        document.getElementById('btnTrain').addEventListener('click', trainTroops);
+
+        // ==================== 启动 ====================
+        initGame();
+        document.getElementById('tutorialModal').classList.add('active');
+    </script>
+</body>
+</html>
